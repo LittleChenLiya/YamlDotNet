@@ -31,6 +31,7 @@ using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization.NodeDeserializers;
 using YamlDotNet.Serialization.NodeTypeResolvers;
 using YamlDotNet.Serialization.ObjectFactories;
+using YamlDotNet.Serialization.Preflight;
 using YamlDotNet.Serialization.Schemas;
 using YamlDotNet.Serialization.TypeInspectors;
 using YamlDotNet.Serialization.TypeResolvers;
@@ -65,6 +66,7 @@ namespace YamlDotNet.Serialization
         private bool caseInsensitivePropertyMatching;
         private bool enforceRequiredProperties;
         private int? maximumRecursion;
+        private PreflightValidationOptions? preflightValidationOptions;
 
         /// <summary>
         /// Initializes a new <see cref="DeserializerBuilder" /> using the default component registrations.
@@ -484,6 +486,43 @@ namespace YamlDotNet.Serialization
         }
 
         /// <summary>
+        /// Enables a preflight validation phase that buffers the whole event stream and checks it
+        /// against the target type and the registered tag mappings before any object is constructed.
+        /// Unknown tags, tags whose mapped type is not assignable to the target type at that position,
+        /// ambiguous polymorphic positions without a tag, duplicate anchors, unresolvable aliases and
+        /// aliases whose anchored type is incompatible with the target type at the position where they
+        /// are used are all rejected with a <see cref="PreflightValidationException" /> before any
+        /// constructor or property setter is executed.
+        /// </summary>
+        /// <param name="configure">Optionally configures the preflight validation, such as the maximum number of buffered events.</param>
+        public DeserializerBuilder WithPreflightValidation(Action<PreflightValidationOptions>? configure = null)
+        {
+            var options = new PreflightValidationOptions();
+            configure?.Invoke(options);
+            if (options.MaxBufferedEvents <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(configure), $"The maximum number of buffered events specified ({options.MaxBufferedEvents}) is invalid. It should be a positive integer.");
+            }
+
+            if (options.MaxDepth <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(configure), $"The maximum nesting depth specified ({options.MaxDepth}) is invalid. It should be a positive integer.");
+            }
+
+            preflightValidationOptions = options;
+            return this;
+        }
+
+        /// <summary>
+        /// Disables the preflight validation phase.
+        /// </summary>
+        public DeserializerBuilder WithoutPreflightValidation()
+        {
+            preflightValidationOptions = null;
+            return this;
+        }
+
+        /// <summary>
         /// Sets the maximum recursion that is allowed while building the object graph. Must be > 0. Default is 100.
         /// </summary>
         /// <remarks>
@@ -513,7 +552,18 @@ namespace YamlDotNet.Serialization
         {
             FsharpHelper.Instance ??= new DefaultFsharpHelper();
 
-            return Deserializer.FromValueDeserializer(BuildValueDeserializer());
+            var deserializer = Deserializer.FromValueDeserializer(BuildValueDeserializer());
+            if (preflightValidationOptions != null)
+            {
+                deserializer = deserializer.WithPreflightValidation(new DeserializationPreflightValidator(
+                    BuildTypeInspector(),
+                    tagMappings,
+                    typeMappings,
+                    preflightValidationOptions,
+                    caseInsensitivePropertyMatching));
+            }
+
+            return deserializer;
         }
 
         /// <summary>

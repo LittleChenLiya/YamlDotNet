@@ -23,6 +23,7 @@ using System;
 using System.IO;
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
+using YamlDotNet.Serialization.Preflight;
 using YamlDotNet.Serialization.Utilities;
 
 namespace YamlDotNet.Serialization
@@ -35,6 +36,7 @@ namespace YamlDotNet.Serialization
     public sealed class Deserializer : IDeserializer
     {
         private readonly IValueDeserializer valueDeserializer;
+        private readonly DeserializationPreflightValidator? preflightValidator;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Deserializer" /> using the default configuration.
@@ -56,6 +58,12 @@ namespace YamlDotNet.Serialization
             this.valueDeserializer = valueDeserializer ?? throw new ArgumentNullException(nameof(valueDeserializer));
         }
 
+        private Deserializer(IValueDeserializer valueDeserializer, DeserializationPreflightValidator preflightValidator)
+            : this(valueDeserializer)
+        {
+            this.preflightValidator = preflightValidator ?? throw new ArgumentNullException(nameof(preflightValidator));
+        }
+
         /// <summary>
         /// Creates a new <see cref="Deserializer" /> that uses the specified <see cref="IValueDeserializer" />.
         /// This method is available for advanced scenarios. The preferred way to customize the behavior of the
@@ -64,6 +72,18 @@ namespace YamlDotNet.Serialization
         public static Deserializer FromValueDeserializer(IValueDeserializer valueDeserializer)
         {
             return new Deserializer(valueDeserializer);
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="Deserializer" /> that behaves like this one, but additionally
+        /// runs the specified preflight validation over the buffered event stream before any
+        /// object is constructed. When the validation fails, a
+        /// <see cref="PreflightValidationException" /> is thrown and no constructor or property
+        /// setter is executed.
+        /// </summary>
+        public Deserializer WithPreflightValidation(DeserializationPreflightValidator preflightValidator)
+        {
+            return new Deserializer(valueDeserializer, preflightValidator);
         }
 
         public T Deserialize<T>(string input)
@@ -124,6 +144,14 @@ namespace YamlDotNet.Serialization
             if (type == null)
             {
                 throw new ArgumentNullException(nameof(type));
+            }
+
+            if (preflightValidator != null)
+            {
+                // Buffer and validate the whole event stream before constructing any object,
+                // then replay the validated events through the regular pipeline.
+                var bufferedEvents = preflightValidator.BufferAndValidate(parser, type);
+                parser = new BufferedEventParser(bufferedEvents);
             }
 
             var hasStreamStart = parser.TryConsume<StreamStart>(out var _);
