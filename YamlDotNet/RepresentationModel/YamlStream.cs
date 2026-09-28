@@ -112,6 +112,43 @@ namespace YamlDotNet.RepresentationModel
         /// Saves the stream to the specified output.
         /// </summary>
         /// <param name="output">The output.</param>
+        /// <param name="anchorNamingMode">Controls how anchors are assigned to shared nodes.</param>
+        public void Save(TextWriter output, AnchorNamingMode anchorNamingMode)
+        {
+            Save(new Emitter(output), anchorNamingMode);
+        }
+
+        /// <summary>
+        /// Saves the stream to the specified emitter.
+        /// </summary>
+        /// <param name="emitter">The emitter.</param>
+        /// <param name="anchorNamingMode">Controls how anchors are assigned to shared nodes.</param>
+        public void Save(IEmitter emitter, AnchorNamingMode anchorNamingMode)
+        {
+            if (anchorNamingMode == AnchorNamingMode.Random)
+            {
+                Save(emitter, true);
+                return;
+            }
+
+            // Analyze every document completely before emitting anything so that naming conflicts
+            // and unrepresentable structures fail before any byte is written. Anchor scope is
+            // independent between documents.
+            var plans = new DeterministicAnchorPlan[documents.Count];
+            for (var i = 0; i < documents.Count; i++)
+            {
+                plans[i] = documents[i].BuildDeterministicAnchorPlan();
+            }
+
+            emitter.Emit(new StreamStart());
+
+            for (var i = 0; i < documents.Count; i++)
+            {
+                documents[i].Save(emitter, plans[i]);
+            }
+
+            emitter.Emit(new StreamEnd());
+        }
         public void Save(TextWriter output)
         {
             Save(output, true);

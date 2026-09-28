@@ -155,7 +155,7 @@ namespace YamlDotNet.RepresentationModel
                 implicitPlain = true;
             }
 
-            emitter.Emit(new Scalar(Anchor, tag, Value ?? string.Empty, Style, implicitPlain, false));
+            emitter.Emit(new Scalar(ResolveAnchor(state), tag, Value ?? string.Empty, Style, implicitPlain, false));
         }
 
         /// <summary>

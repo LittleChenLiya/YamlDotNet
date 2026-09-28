@@ -189,6 +189,22 @@ namespace YamlDotNet.RepresentationModel
         }
 
         /// <summary>
+        /// Computes the deterministic anchor assignments for this document without emitting
+        /// anything and without modifying any node.
+        /// </summary>
+        internal DeterministicAnchorPlan BuildDeterministicAnchorPlan()
+        {
+            return DeterministicAnchorPlanner.Analyze(RootNode);
+        }
+
+        internal void Save(IEmitter emitter, DeterministicAnchorPlan anchorPlan)
+        {
+            emitter.Emit(new DocumentStart());
+            RootNode.Save(emitter, new EmitterState(anchorPlan));
+            emitter.Emit(new DocumentEnd(false));
+        }
+
+        /// <summary>
         /// Accepts the specified visitor by calling the appropriate Visit method on it.
         /// </summary>
         /// <param name="visitor">

@@ -156,7 +156,7 @@ namespace YamlDotNet.RepresentationModel
         /// <param name="state">The state.</param>
         internal override void Emit(IEmitter emitter, EmitterState state)
         {
-            emitter.Emit(new SequenceStart(Anchor, Tag, Tag.IsEmpty, Style));
+            emitter.Emit(new SequenceStart(ResolveAnchor(state), Tag, Tag.IsEmpty, Style));
             foreach (var node in children)
             {
                 node.Save(emitter, state);

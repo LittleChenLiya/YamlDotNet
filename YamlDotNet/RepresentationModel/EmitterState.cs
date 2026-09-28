@@ -29,10 +29,29 @@ namespace YamlDotNet.RepresentationModel
     /// </summary>
     internal class EmitterState
     {
+        public EmitterState()
+        {
+        }
+
+        public EmitterState(DeterministicAnchorPlan deterministicAnchors)
+        {
+            DeterministicAnchors = deterministicAnchors;
+        }
+
         /// <summary>
         /// Gets the already emitted anchors.
         /// </summary>
         /// <value>The emitted anchors.</value>
         public HashSet<AnchorName> EmittedAnchors { get; } = [];
+
+        /// <summary>
+        /// Gets the nodes that have already been emitted as entity nodes when deterministic anchors are used.
+        /// </summary>
+        public HashSet<YamlNode> EmittedNodes { get; } = new HashSet<YamlNode>(NodeReferenceComparer.Instance);
+
+        /// <summary>
+        /// Gets the precomputed anchor assignments, or <c>null</c> when anchors come from the nodes themselves.
+        /// </summary>
+        public DeterministicAnchorPlan? DeterministicAnchors { get; }
     }
 }

@@ -124,6 +124,28 @@ namespace YamlDotNet.RepresentationModel
         /// <param name="state">The state.</param>
         internal void Save(IEmitter emitter, EmitterState state)
         {
+            if (state?.DeterministicAnchors != null)
+            {
+                // An alias node is always emitted as an alias; its target was validated by the planner.
+                if (this is YamlAliasNode aliasNode)
+                {
+                    emitter.Emit(new AnchorAlias(aliasNode.Anchor));
+                    return;
+                }
+
+                if (state.DeterministicAnchors.Anchors.TryGetValue(this, out var anchor))
+                {
+                    if (!state.EmittedNodes.Add(this))
+                    {
+                        emitter.Emit(new AnchorAlias(anchor));
+                        return;
+                    }
+                }
+
+                Emit(emitter, state);
+                return;
+            }
+
             if (!Anchor.IsEmpty && !state.EmittedAnchors.Add(Anchor))
             {
                 emitter.Emit(new AnchorAlias(Anchor));
@@ -132,6 +154,18 @@ namespace YamlDotNet.RepresentationModel
             {
                 Emit(emitter, state);
             }
+        }
+
+        /// <summary>
+        /// Gets the anchor to write for this node, taking precomputed deterministic anchors into account
+        /// without ever changing the <see cref="Anchor"/> value of the node itself.
+        /// </summary>
+        internal AnchorName ResolveAnchor(EmitterState state)
+        {
+            var deterministicAnchors = state?.DeterministicAnchors;
+            return deterministicAnchors != null && deterministicAnchors.Anchors.TryGetValue(this, out var anchor)
+                ? anchor
+                : Anchor;
         }
 
         /// <summary>
