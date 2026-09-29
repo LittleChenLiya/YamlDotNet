@@ -38,6 +38,42 @@ namespace YamlDotNet.Serialization
         object? Deserialize(TextReader input, Type type);
 
         /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        T Deserialize<T>(string input, int documentIndex);
+
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        T Deserialize<T>(TextReader input, int documentIndex);
+
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        T Deserialize<T>(IParser parser, int documentIndex);
+
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        object? Deserialize(string input, Type type, int documentIndex);
+
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        object? Deserialize(TextReader input, Type type, int documentIndex);
+
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        object? Deserialize(IParser parser, Type type, int documentIndex);
+
+        /// <summary>
         /// Deserializes an object of the specified type.
         /// </summary>
         /// <param name="parser">The <see cref="IParser" /> from where to deserialize the object.</param>

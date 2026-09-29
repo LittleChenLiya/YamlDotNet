@@ -82,6 +82,43 @@ namespace YamlDotNet.Serialization
             return (T)Deserialize(parser, typeof(T))!; // We really want an exception if we are trying to deserialize null into a non-nullable type
         }
 
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        /// <param name="input">The <see cref="string" /> containing the YAML documents.</param>
+        /// <param name="documentIndex">The zero-based index of the document to deserialize.</param>
+        /// <returns>Returns the deserialized object, or null if the selected document is empty or does not exist.</returns>
+        public T Deserialize<T>(string input, int documentIndex)
+        {
+            using var reader = new StringReader(input);
+            return Deserialize<T>(reader, documentIndex);
+        }
+
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        /// <param name="input">The <see cref="TextReader" /> from where to deserialize the object.</param>
+        /// <param name="documentIndex">The zero-based index of the document to deserialize.</param>
+        /// <returns>Returns the deserialized object, or null if the selected document is empty or does not exist.</returns>
+        public T Deserialize<T>(TextReader input, int documentIndex)
+        {
+            return Deserialize<T>(new Parser(input), documentIndex);
+        }
+
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        /// <param name="parser">The <see cref="IParser" /> from where to deserialize the object.</param>
+        /// <param name="documentIndex">The zero-based index of the document to deserialize.</param>
+        /// <returns>Returns the deserialized object, or null if the selected document is empty or does not exist.</returns>
+        public T Deserialize<T>(IParser parser, int documentIndex)
+        {
+            return (T)Deserialize(parser, typeof(T), documentIndex)!; // We really want an exception if we are trying to deserialize null into a non-nullable type
+        }
+
         public object? Deserialize(string input)
         {
             return Deserialize<object>(input);
@@ -106,6 +143,96 @@ namespace YamlDotNet.Serialization
         public object? Deserialize(TextReader input, Type type)
         {
             return Deserialize(new Parser(input), type);
+        }
+
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        /// <param name="input">The <see cref="string" /> containing the YAML documents.</param>
+        /// <param name="type">The static type of the object to deserialize.</param>
+        /// <param name="documentIndex">The zero-based index of the document to deserialize.</param>
+        /// <returns>Returns the deserialized object, or null if the selected document is empty or does not exist.</returns>
+        public object? Deserialize(string input, Type type, int documentIndex)
+        {
+            using var reader = new StringReader(input);
+            return Deserialize(reader, type, documentIndex);
+        }
+
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// All other documents are parsed to validate their syntax, but no objects are constructed for them.
+        /// </summary>
+        /// <param name="input">The <see cref="TextReader" /> from where to deserialize the object.</param>
+        /// <param name="type">The static type of the object to deserialize.</param>
+        /// <param name="documentIndex">The zero-based index of the document to deserialize.</param>
+        /// <returns>Returns the deserialized object, or null if the selected document is empty or does not exist.</returns>
+        public object? Deserialize(TextReader input, Type type, int documentIndex)
+        {
+            return Deserialize(new Parser(input), type, documentIndex);
+        }
+
+        /// <summary>
+        /// Deserializes an object of the specified type from the document at the specified zero-based index.
+        /// Every document is fully parsed, so syntax errors in any document are reported,
+        /// but only the selected document is deserialized: no objects are constructed,
+        /// no custom converters are invoked and no alias state is kept for the documents
+        /// that are skipped.
+        /// </summary>
+        /// <param name="parser">The <see cref="IParser" /> from where to deserialize the object.</param>
+        /// <param name="type">The static type of the object to deserialize.</param>
+        /// <param name="documentIndex">The zero-based index of the document to deserialize.</param>
+        /// <returns>Returns the deserialized object, or null if the selected document is empty or does not exist.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="documentIndex" /> is negative.</exception>
+        public object? Deserialize(IParser parser, Type type, int documentIndex)
+        {
+            if (parser == null)
+            {
+                throw new ArgumentNullException(nameof(parser));
+            }
+
+            if (type == null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+
+            if (documentIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(documentIndex), documentIndex, "The document index must be greater than or equal to zero.");
+            }
+
+            var hasStreamStart = parser.TryConsume<StreamStart>(out var _);
+
+            object? result = null;
+            var currentDocumentIndex = 0;
+            while (parser.TryConsume<DocumentStart>(out var _))
+            {
+                if (!parser.Accept<DocumentEnd>(out var _) && !parser.Accept<StreamEnd>(out var _))
+                {
+                    if (currentDocumentIndex == documentIndex)
+                    {
+                        using var state = new SerializerState();
+                        result = valueDeserializer.DeserializeValue(parser, type, state, valueDeserializer);
+                        state.OnDeserialization();
+                    }
+                    else
+                    {
+                        // Fully parse the document to validate its syntax,
+                        // but do not construct any object for it.
+                        parser.SkipThisAndNestedEvents();
+                    }
+                }
+
+                parser.Consume<DocumentEnd>();
+                currentDocumentIndex++;
+            }
+
+            if (hasStreamStart)
+            {
+                parser.Consume<StreamEnd>();
+            }
+
+            return result;
         }
 
         /// <summary>
