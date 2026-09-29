@@ -150,5 +150,132 @@ namespace YamlDotNet.Serialization
 
             return result;
         }
+
+        /// <inheritdoc cref="IDeserializer.Deserialize{T}(string, int)" />
+        public T Deserialize<T>(string input, int documentIndex)
+        {
+            using var reader = new StringReader(input);
+            return Deserialize<T>(reader, documentIndex);
+        }
+
+        /// <inheritdoc cref="IDeserializer.Deserialize{T}(string, int)" />
+        public T Deserialize<T>(TextReader input, int documentIndex)
+        {
+            return (T)Deserialize(input, typeof(T), documentIndex)!; // We really want an exception if we are trying to deserialize null into a non-nullable type
+        }
+
+        /// <inheritdoc cref="IDeserializer.Deserialize{T}(string, int)" />
+        public T Deserialize<T>(IParser parser, int documentIndex)
+        {
+            return (T)Deserialize(parser, typeof(T), documentIndex)!; // We really want an exception if we are trying to deserialize null into a non-nullable type
+        }
+
+        /// <inheritdoc cref="IDeserializer.Deserialize{T}(string, int)" />
+        public object? Deserialize(string input, int documentIndex)
+        {
+            return Deserialize<object>(input, documentIndex);
+        }
+
+        /// <inheritdoc cref="IDeserializer.Deserialize{T}(string, int)" />
+        public object? Deserialize(TextReader input, int documentIndex)
+        {
+            return Deserialize<object>(input, documentIndex);
+        }
+
+        /// <inheritdoc cref="IDeserializer.Deserialize{T}(string, int)" />
+        public object? Deserialize(IParser parser, int documentIndex)
+        {
+            return Deserialize<object>(parser, documentIndex);
+        }
+
+        /// <inheritdoc cref="IDeserializer.Deserialize{T}(string, int)" />
+        public object? Deserialize(string input, Type type, int documentIndex)
+        {
+            using var reader = new StringReader(input);
+            return Deserialize(reader, type, documentIndex);
+        }
+
+        /// <inheritdoc cref="IDeserializer.Deserialize{T}(string, int)" />
+        public object? Deserialize(TextReader input, Type type, int documentIndex)
+        {
+            if (input == null)
+            {
+                throw new ArgumentNullException(nameof(input));
+            }
+
+            using (input)
+            {
+                return Deserialize(new Parser(input), type, documentIndex);
+            }
+        }
+
+        /// <summary>
+        /// Deserializes the document at the specified zero-based index from a YAML stream
+        /// that may contain multiple documents.
+        /// </summary>
+        /// <param name="parser">The <see cref="IParser" /> from where to deserialize the document.</param>
+        /// <param name="type">The static type of the object to deserialize.</param>
+        /// <param name="documentIndex">The zero-based index of the document to deserialize.</param>
+        /// <returns>Returns the deserialized object.</returns>
+        /// <remarks>
+        /// All documents are fully parsed, so syntax errors in skipped documents are still reported,
+        /// but skipped documents do not construct objects, do not invoke type converters,
+        /// and do not carry anchor/alias state into other documents.
+        /// </remarks>
+        public object? Deserialize(IParser parser, Type type, int documentIndex)
+        {
+            if (parser == null)
+            {
+                throw new ArgumentNullException(nameof(parser));
+            }
+
+            if (type == null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+
+            if (documentIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(documentIndex), documentIndex, "The document index must be greater than or equal to zero.");
+            }
+
+            parser.TryConsume<StreamStart>(out var _);
+
+            object? result = null;
+            var documentFound = false;
+            var currentDocumentIndex = 0;
+
+            while (parser.TryConsume<DocumentStart>(out var _))
+            {
+                if (currentDocumentIndex == documentIndex)
+                {
+                    documentFound = true;
+                    if (!parser.Accept<DocumentEnd>(out var _))
+                    {
+                        using var state = new SerializerState();
+                        result = valueDeserializer.DeserializeValue(parser, type, state, valueDeserializer);
+                        state.OnDeserialization();
+                    }
+                }
+                else if (!parser.Accept<DocumentEnd>(out var _))
+                {
+                    // Fully parse the skipped document so that syntax errors are still reported,
+                    // but do not construct objects, invoke converters, or keep anchor/alias state.
+                    parser.SkipThisAndNestedEvents();
+                }
+
+                parser.Consume<DocumentEnd>();
+                currentDocumentIndex++;
+            }
+
+            parser.Consume<StreamEnd>();
+
+            if (!documentFound)
+            {
+                throw new ArgumentOutOfRangeException(nameof(documentIndex), documentIndex, $"The YAML stream contains only {currentDocumentIndex} document(s).");
+            }
+
+            return result;
+        }
     }
 }

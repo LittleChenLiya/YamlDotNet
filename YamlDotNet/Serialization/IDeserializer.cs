@@ -44,5 +44,55 @@ namespace YamlDotNet.Serialization
         /// <param name="type">The static type of the object to deserialize.</param>
         /// <returns>Returns the deserialized object.</returns>
         object? Deserialize(IParser parser, Type type);
+
+        /// <summary>
+        /// Deserializes the document at the specified zero-based index from a YAML stream
+        /// that may contain multiple documents.
+        /// </summary>
+        /// <param name="input">The YAML input.</param>
+        /// <param name="documentIndex">The zero-based index of the document to deserialize.</param>
+        /// <returns>Returns the deserialized object.</returns>
+        /// <remarks>
+        /// All documents are fully parsed, so syntax errors in skipped documents are still reported,
+        /// but skipped documents do not construct objects, do not invoke type converters,
+        /// and do not carry anchor/alias state into other documents.
+        /// </remarks>
+        T Deserialize<T>(string input, int documentIndex);
+
+        /// <inheritdoc cref="Deserialize{T}(string, int)" />
+        T Deserialize<T>(TextReader input, int documentIndex);
+
+        /// <inheritdoc cref="Deserialize{T}(string, int)" />
+        T Deserialize<T>(IParser parser, int documentIndex);
+
+        /// <inheritdoc cref="Deserialize{T}(string, int)" />
+        object? Deserialize(string input, int documentIndex);
+
+        /// <inheritdoc cref="Deserialize{T}(string, int)" />
+        object? Deserialize(TextReader input, int documentIndex);
+
+        /// <inheritdoc cref="Deserialize{T}(string, int)" />
+        object? Deserialize(IParser parser, int documentIndex);
+
+        /// <inheritdoc cref="Deserialize{T}(string, int)" />
+        object? Deserialize(string input, Type type, int documentIndex);
+
+        /// <inheritdoc cref="Deserialize{T}(string, int)" />
+        object? Deserialize(TextReader input, Type type, int documentIndex);
+
+        /// <summary>
+        /// Deserializes the document at the specified zero-based index from a YAML stream
+        /// that may contain multiple documents.
+        /// </summary>
+        /// <param name="parser">The <see cref="IParser" /> from where to deserialize the document.</param>
+        /// <param name="type">The static type of the object to deserialize.</param>
+        /// <param name="documentIndex">The zero-based index of the document to deserialize.</param>
+        /// <returns>Returns the deserialized object.</returns>
+        /// <remarks>
+        /// All documents are fully parsed, so syntax errors in skipped documents are still reported,
+        /// but skipped documents do not construct objects, do not invoke type converters,
+        /// and do not carry anchor/alias state into other documents.
+        /// </remarks>
+        object? Deserialize(IParser parser, Type type, int documentIndex);
     }
 }
