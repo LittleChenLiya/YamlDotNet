@@ -65,6 +65,7 @@ namespace YamlDotNet.Serialization
         private bool caseInsensitivePropertyMatching;
         private bool enforceRequiredProperties;
         private int? maximumRecursion;
+        private ReferenceBudget? referenceBudget;
 
         /// <summary>
         /// Initializes a new <see cref="DeserializerBuilder" /> using the default component registrations.
@@ -507,6 +508,33 @@ namespace YamlDotNet.Serialization
         }
 
         /// <summary>
+        /// Sets an optional <see cref="ReferenceBudget" /> that limits how much a document may expand
+        /// through anchors and aliases during deserialization. The budget is disabled by default.
+        /// </summary>
+        /// <remarks>
+        /// The budget limits the number of nodes that are actually constructed (aliases to shared
+        /// anchors are not counted as new constructions) and the depth of anchored nodes that are
+        /// being resolved at the same time. The limits are enforced across all nested deserialization
+        /// calls of a document. When a limit is exceeded, a
+        /// <see cref="YamlDotNet.Core.ReferenceBudgetExceededException" /> is thrown and no partially
+        /// constructed object graph is returned.
+        /// </remarks>
+        public DeserializerBuilder WithReferenceBudget(ReferenceBudget referenceBudget)
+        {
+            this.referenceBudget = referenceBudget ?? throw new ArgumentNullException(nameof(referenceBudget));
+            return this;
+        }
+
+        /// <summary>
+        /// Sets an optional <see cref="ReferenceBudget" /> with the specified limits.
+        /// The budget is disabled by default. See <see cref="WithReferenceBudget(ReferenceBudget)" />.
+        /// </summary>
+        public DeserializerBuilder WithReferenceBudget(int maxConstructedNodes, int maxAliasResolutionDepth)
+        {
+            return WithReferenceBudget(new ReferenceBudget(maxConstructedNodes, maxAliasResolutionDepth));
+        }
+
+        /// <summary>
         /// Creates a new <see cref="Deserializer" /> according to the current configuration.
         /// </summary>
         public IDeserializer Build()
@@ -534,6 +562,11 @@ namespace YamlDotNet.Serialization
             if (maximumRecursion != null)
             {
                 valueDeserializer = new MaximumRecursionValueDeserializer(valueDeserializer, maximumRecursion.Value);
+            }
+
+            if (referenceBudget != null)
+            {
+                valueDeserializer = new ReferenceBudgetValueDeserializer(valueDeserializer, referenceBudget);
             }
 
             return new AliasValueDeserializer(valueDeserializer);

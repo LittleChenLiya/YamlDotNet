@@ -116,6 +116,34 @@ System.Console.WriteLine($"{p.Name} is {p.Age} years old and lives at {h.Street}
 // George Washington is 89 years old and lives at 400 Mockingbird Lane in Louaryland, Hawidaho.
 ```
 
+### Limiting alias expansion with a reference budget
+
+Some YAML documents are small on disk but expand into very large object graphs through
+anchors and aliases. When deserializing untrusted input you can opt into a reference budget
+that limits this expansion. The budget is **disabled by default**; enable it with
+`WithReferenceBudget`:
+
+```c#
+var deserializer = new DeserializerBuilder()
+    .WithReferenceBudget(new ReferenceBudget(
+        maxConstructedNodes: 1000,   // cap the number of nodes actually constructed
+        maxAliasResolutionDepth: 8)) // cap the nesting depth of anchored nodes being resolved
+    .Build());
+```
+
+* `maxConstructedNodes` counts every YAML node that is actually constructed into an object.
+  An alias that refers to a previously anchored node reuses the same object and does **not**
+  consume this budget, so legitimate sharing keeps working and object identity is preserved.
+* `maxAliasResolutionDepth` counts how many anchored nodes are being resolved at the same
+  time, i.e. the nesting depth of anchored nodes.
+
+Both limits are optional, but at least one of them must be specified. The limits are shared
+across all nested deserialization calls of the same document. When a limit is exceeded, a
+`ReferenceBudgetExceededException` is thrown. The exception carries the position in the YAML
+document (`Start`/`End`), the exceeded `ReferenceBudgetCategory` (`ConstructedNodes` or
+`AliasResolutionDepth`) and the configured `Limit`; no partially constructed object graph is
+returned to the caller. The same deserializer instance can be reused afterwards.
+
 ## More information
 
 More information can be found in the [project's wiki](https://github.com/aaubry/YamlDotNet/wiki).
