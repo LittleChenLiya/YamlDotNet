@@ -65,6 +65,8 @@ namespace YamlDotNet.Serialization
         private bool caseInsensitivePropertyMatching;
         private bool enforceRequiredProperties;
         private int? maximumRecursion;
+        private int? maximumReferenceBudgetNodes;
+        private int? maximumReferenceBudgetAliasDepth;
 
         /// <summary>
         /// Initializes a new <see cref="DeserializerBuilder" /> using the default component registrations.
@@ -507,6 +509,39 @@ namespace YamlDotNet.Serialization
         }
 
         /// <summary>
+        /// Enforces an optional reference budget while deserializing. The budget limits the number of
+        /// nodes that are actually constructed and the depth of aliases that are currently being resolved.
+        /// Aliases that share an already constructed object are not counted as additional constructions,
+        /// and the limits are propagated through every nested deserialization call. By default the budget
+        /// is disabled; call this method to enable it.
+        /// </summary>
+        /// <param name="maximumNodes">
+        /// The maximum number of nodes that may be constructed. A <see langword="null"/> value leaves
+        /// this category unbounded.
+        /// </param>
+        /// <param name="maximumAliasDepth">
+        /// The maximum depth of aliases that may be resolved simultaneously. A <see langword="null"/>
+        /// value leaves this category unbounded.
+        /// </param>
+        /// <returns>This deserializer builder.</returns>
+        public DeserializerBuilder WithReferenceBudget(int? maximumNodes = null, int? maximumAliasDepth = null)
+        {
+            if (maximumNodes is <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maximumNodes), $"The maximum number of nodes specified ({maximumNodes}) is invalid. It should be a positive integer.");
+            }
+
+            if (maximumAliasDepth is <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maximumAliasDepth), $"The maximum alias depth specified ({maximumAliasDepth}) is invalid. It should be a positive integer.");
+            }
+
+            maximumReferenceBudgetNodes = maximumNodes;
+            maximumReferenceBudgetAliasDepth = maximumAliasDepth;
+            return this;
+        }
+
+        /// <summary>
         /// Creates a new <see cref="Deserializer" /> according to the current configuration.
         /// </summary>
         public IDeserializer Build()
@@ -536,7 +571,14 @@ namespace YamlDotNet.Serialization
                 valueDeserializer = new MaximumRecursionValueDeserializer(valueDeserializer, maximumRecursion.Value);
             }
 
-            return new AliasValueDeserializer(valueDeserializer);
+            valueDeserializer = new AliasValueDeserializer(valueDeserializer);
+
+            if (maximumReferenceBudgetNodes != null || maximumReferenceBudgetAliasDepth != null)
+            {
+                valueDeserializer = new ReferenceBudgetValueDeserializer(valueDeserializer, maximumReferenceBudgetNodes, maximumReferenceBudgetAliasDepth);
+            }
+
+            return valueDeserializer;
         }
     }
 }

@@ -116,6 +116,36 @@ System.Console.WriteLine($"{p.Name} is {p.Age} years old and lives at {h.Street}
 // George Washington is 89 years old and lives at 400 Mockingbird Lane in Louaryland, Hawidaho.
 ```
 
+### Limiting the size of the object graph with a reference budget
+
+Some YAML documents are small on disk but expand into a very large object graph once aliases are resolved. To protect against this, the deserializer can enforce an optional reference budget. The budget limits two quantities:
+
+- the number of nodes that are **actually constructed** while building the object graph, and
+- the depth of **aliases that are currently being resolved**.
+
+Aliases that share an already constructed object are not counted as additional constructions, and the limits are propagated through every nested deserialization call. When a limit is reached, a `ReferenceBudgetExceededException` is thrown with the YAML position and the category of the budget that was exceeded; no partial result is returned to the caller.
+
+The budget is disabled by default. Enable it with `WithReferenceBudget`, passing the maximum number of nodes and the maximum alias depth (either value can be `null` to leave that category unbounded):
+
+```c#
+var deserializer = new DeserializerBuilder()
+    .WithReferenceBudget(maximumNodes: 10_000, maximumAliasDepth: 64)
+    .Build();
+
+try
+{
+    var result = deserializer.Deserialize<object>(yml);
+}
+catch (ReferenceBudgetExceededException ex)
+{
+    // ex.Category identifies which limit was exceeded (NodeCount or AliasDepth).
+    // ex.Start / ex.End hold the YAML position of the offending event.
+    Console.WriteLine($"{ex.Category} budget exceeded at {ex.Start}: {ex.Message}");
+}
+```
+
+Setting a budget is recommended when deserializing untrusted input, since it bounds the amount of memory and the depth of alias resolution that a single document can trigger.
+
 ## More information
 
 More information can be found in the [project's wiki](https://github.com/aaubry/YamlDotNet/wiki).
