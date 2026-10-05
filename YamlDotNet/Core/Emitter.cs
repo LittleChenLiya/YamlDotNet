@@ -27,6 +27,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using YamlDotNet.Core.Events;
 using YamlDotNet.Core.ObjectPool;
+using YamlDotNet.Serialization.Schemas;
 using ParsingEvent = YamlDotNet.Core.Events.ParsingEvent;
 using TagDirective = YamlDotNet.Core.Tokens.TagDirective;
 using VersionDirective = YamlDotNet.Core.Tokens.VersionDirective;
@@ -67,6 +68,7 @@ namespace YamlDotNet.Core
         private bool isIndentation;
         private readonly bool forceIndentLess;
         private readonly bool useUtf16SurrogatePair;
+        private readonly bool useStringStyleSelector;
 
         private bool isDocumentEndWritten;
 
@@ -149,6 +151,7 @@ namespace YamlDotNet.Core
             this.skipAnchorName = settings.SkipAnchorName;
             this.forceIndentLess = !settings.IndentSequences;
             this.useUtf16SurrogatePair = settings.UseUtf16SurrogatePairs;
+            this.useStringStyleSelector = settings.UseStringStyleSelector;
 
             this.output = output;
             this.output.NewLine = settings.NewLine;
@@ -912,7 +915,15 @@ namespace YamlDotNet.Core
                 throw new YamlException("Neither tag nor isImplicit flags are specified.");
             }
 
-            if (style == ScalarStyle.Any)
+            if (useStringStyleSelector && IsStringScalar(scalar))
+            {
+                // Use the explicit string style selector to choose a safe style based on the
+                // value and the target schema. This guarantees that the emitted scalar
+                // round-trips to the original string when re-parsed.
+                var selection = StringStyleSelector.Select(scalar.Value, scalar.Tag);
+                style = selection.Style;
+            }
+            else if (style == ScalarStyle.Any)
             {
                 style = scalarData.IsMultiline ? ScalarStyle.Folded : ScalarStyle.Plain;
             }
@@ -965,6 +976,16 @@ namespace YamlDotNet.Core
             }
 
             scalarData.Style = style;
+        }
+
+        /// <summary>
+        /// Determines whether the specified scalar is a string scalar (explicitly tagged as
+        /// <c>str</c>, implicitly typed, or explicitly tagged as <c>null</c>).
+        /// </summary>
+        private static bool IsStringScalar(Scalar scalar)
+        {
+            var tag = scalar.Tag;
+            return tag.IsEmpty || tag == FailsafeSchema.Tags.Str || tag == JsonSchema.Tags.Null;
         }
 
         private void ProcessScalar()
@@ -1270,7 +1291,11 @@ namespace YamlDotNet.Core
 
                 if (IsBreak(character, out var breakCharacter))
                 {
-                    WriteBreak(breakCharacter);
+                    // Write the line break directly instead of via WriteBreak so that the
+                    // scalar's internal line breaks are preserved verbatim (as LF) even when
+                    // the output uses CRLF line endings. The parser normalizes all line breaks
+                    // in block scalars to LF, so emitting LF here guarantees round-trip.
+                    WriteBlockScalarBreak(breakCharacter);
                     isIndentation = true;
                     previousBreak = true;
                 }
@@ -1322,7 +1347,7 @@ namespace YamlDotNet.Core
                         }
                     }
 
-                    WriteBreak(breakCharacter);
+                    WriteBlockScalarBreak(breakCharacter);
                     isIndentation = true;
                     previousBreak = true;
                 }
@@ -1941,6 +1966,26 @@ namespace YamlDotNet.Core
             else
             {
                 output.Write(breakCharacter);
+            }
+            column = 0;
+        }
+
+        /// <summary>
+        /// Writes a line break that is part of a block scalar's content. The break is written
+        /// directly as LF (or as-is for LS/PS) so that the scalar's internal line breaks are
+        /// preserved verbatim even when the output uses CRLF line endings. The parser
+        /// normalizes all line breaks in block scalars to LF, so emitting LF here guarantees
+        /// that the round-tripped value is identical to the original.
+        /// </summary>
+        private void WriteBlockScalarBreak(char breakCharacter)
+        {
+            if (breakCharacter == '\x2028' || breakCharacter == '\x2029')
+            {
+                output.Write(breakCharacter);
+            }
+            else
+            {
+                output.Write('\n');
             }
             column = 0;
         }

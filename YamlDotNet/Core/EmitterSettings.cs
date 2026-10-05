@@ -72,13 +72,24 @@ namespace YamlDotNet.Core
         /// </remarks>
         public bool UseUtf16SurrogatePairs { get; }
 
+        /// <summary>
+        /// If true, the <see cref="StringStyleSelector"/> is used to select a safe scalar style
+        /// for string values based on the target schema, ensuring that the emitted scalar
+        /// round-trips to the original string when re-parsed.
+        /// </summary>
+        /// <remarks>
+        /// The default is <see langword="false"/>, which preserves the legacy behavior where
+        /// the emitter chooses the style (folded for multiline, plain otherwise).
+        /// </remarks>
+        public bool UseStringStyleSelector { get; }
+
         public static readonly EmitterSettings Default = new EmitterSettings();
 
         public EmitterSettings()
         {
         }
 
-        public EmitterSettings(int bestIndent, int bestWidth, bool isCanonical, int maxSimpleKeyLength, bool skipAnchorName = false, bool indentSequences = false, string? newLine = null, bool useUtf16SurrogatePairs = false)
+        public EmitterSettings(int bestIndent, int bestWidth, bool isCanonical, int maxSimpleKeyLength, bool skipAnchorName = false, bool indentSequences = false, string? newLine = null, bool useUtf16SurrogatePairs = false, bool useStringStyleSelector = false)
         {
             if (bestIndent < 2 || bestIndent > 9)
             {
@@ -103,6 +114,7 @@ namespace YamlDotNet.Core
             IndentSequences = indentSequences;
             NewLine = newLine ?? Environment.NewLine;
             UseUtf16SurrogatePairs = useUtf16SurrogatePairs;
+            UseStringStyleSelector = useStringStyleSelector;
         }
 
         public EmitterSettings WithBestIndent(int bestIndent)
@@ -115,7 +127,8 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 IndentSequences,
                 NewLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                UseStringStyleSelector
             );
         }
 
@@ -129,7 +142,8 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 IndentSequences,
                 NewLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                UseStringStyleSelector
             );
         }
 
@@ -143,7 +157,8 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 IndentSequences,
                 NewLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                UseStringStyleSelector
             );
         }
 
@@ -157,7 +172,8 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 IndentSequences,
                 newLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                UseStringStyleSelector
             );
         }
 
@@ -168,7 +184,11 @@ namespace YamlDotNet.Core
                 BestWidth,
                 true,
                 MaxSimpleKeyLength,
-                SkipAnchorName
+                SkipAnchorName,
+                IndentSequences,
+                NewLine,
+                UseUtf16SurrogatePairs,
+                UseStringStyleSelector
             );
         }
 
@@ -182,7 +202,8 @@ namespace YamlDotNet.Core
                 true,
                 IndentSequences,
                 NewLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                UseStringStyleSelector
             );
         }
 
@@ -196,7 +217,8 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 true,
                 NewLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                UseStringStyleSelector
             );
         }
 
@@ -210,6 +232,27 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 IndentSequences,
                 NewLine,
+                true,
+                UseStringStyleSelector
+            );
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="EmitterSettings"/> with <see cref="UseStringStyleSelector"/> enabled.
+        /// When enabled, the <see cref="StringStyleSelector"/> selects a safe scalar style for
+        /// string values based on the target schema.
+        /// </summary>
+        public EmitterSettings WithStringStyleSelector()
+        {
+            return new EmitterSettings(
+                BestIndent,
+                BestWidth,
+                IsCanonical,
+                MaxSimpleKeyLength,
+                SkipAnchorName,
+                IndentSequences,
+                NewLine,
+                UseUtf16SurrogatePairs,
                 true
             );
         }
