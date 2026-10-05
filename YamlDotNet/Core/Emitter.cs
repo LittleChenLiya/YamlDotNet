@@ -67,6 +67,7 @@ namespace YamlDotNet.Core
         private bool isIndentation;
         private readonly bool forceIndentLess;
         private readonly bool useUtf16SurrogatePair;
+        private readonly Func<string, StringStyleDecision>? stringStyleSelector;
 
         private bool isDocumentEndWritten;
 
@@ -149,6 +150,7 @@ namespace YamlDotNet.Core
             this.skipAnchorName = settings.SkipAnchorName;
             this.forceIndentLess = !settings.IndentSequences;
             this.useUtf16SurrogatePair = settings.UseUtf16SurrogatePairs;
+            this.stringStyleSelector = settings.StringStyleSelector;
 
             this.output = output;
             this.output.NewLine = settings.NewLine;
@@ -914,7 +916,18 @@ namespace YamlDotNet.Core
 
             if (style == ScalarStyle.Any)
             {
-                style = scalarData.IsMultiline ? ScalarStyle.Folded : ScalarStyle.Plain;
+                if (stringStyleSelector != null &&
+                    scalar.IsPlainImplicit && scalar.IsQuotedImplicit &&
+                    (noTag || scalar.Tag == "tag:yaml.org,2002:str"))
+                {
+                    // An explicit string style selector is registered: let it choose the
+                    // style that guarantees that the string re-parses unchanged.
+                    style = stringStyleSelector(scalarData.Value).Style;
+                }
+                else
+                {
+                    style = scalarData.IsMultiline ? ScalarStyle.Folded : ScalarStyle.Plain;
+                }
             }
 
             if (isCanonical)

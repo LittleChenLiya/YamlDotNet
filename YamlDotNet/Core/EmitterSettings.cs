@@ -72,13 +72,20 @@ namespace YamlDotNet.Core
         /// </remarks>
         public bool UseUtf16SurrogatePairs { get; }
 
+        /// <summary>
+        /// Optional selector that explicitly chooses the style of untagged string scalars
+        /// (see <see cref="StringStyleSelector"/>). When null, the emitter uses its default
+        /// style heuristics.
+        /// </summary>
+        public Func<string, StringStyleDecision>? StringStyleSelector { get; }
+
         public static readonly EmitterSettings Default = new EmitterSettings();
 
         public EmitterSettings()
         {
         }
 
-        public EmitterSettings(int bestIndent, int bestWidth, bool isCanonical, int maxSimpleKeyLength, bool skipAnchorName = false, bool indentSequences = false, string? newLine = null, bool useUtf16SurrogatePairs = false)
+        public EmitterSettings(int bestIndent, int bestWidth, bool isCanonical, int maxSimpleKeyLength, bool skipAnchorName = false, bool indentSequences = false, string? newLine = null, bool useUtf16SurrogatePairs = false, Func<string, StringStyleDecision>? stringStyleSelector = null)
         {
             if (bestIndent < 2 || bestIndent > 9)
             {
@@ -103,6 +110,7 @@ namespace YamlDotNet.Core
             IndentSequences = indentSequences;
             NewLine = newLine ?? Environment.NewLine;
             UseUtf16SurrogatePairs = useUtf16SurrogatePairs;
+            StringStyleSelector = stringStyleSelector;
         }
 
         public EmitterSettings WithBestIndent(int bestIndent)
@@ -115,7 +123,8 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 IndentSequences,
                 NewLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                StringStyleSelector
             );
         }
 
@@ -129,7 +138,8 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 IndentSequences,
                 NewLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                StringStyleSelector
             );
         }
 
@@ -143,7 +153,8 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 IndentSequences,
                 NewLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                StringStyleSelector
             );
         }
 
@@ -157,7 +168,8 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 IndentSequences,
                 newLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                StringStyleSelector
             );
         }
 
@@ -182,7 +194,8 @@ namespace YamlDotNet.Core
                 true,
                 IndentSequences,
                 NewLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                StringStyleSelector
             );
         }
 
@@ -196,7 +209,8 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 true,
                 NewLine,
-                UseUtf16SurrogatePairs
+                UseUtf16SurrogatePairs,
+                StringStyleSelector
             );
         }
 
@@ -210,7 +224,28 @@ namespace YamlDotNet.Core
                 SkipAnchorName,
                 IndentSequences,
                 NewLine,
-                true
+                true,
+                StringStyleSelector
+            );
+        }
+
+        /// <summary>
+        /// Registers an explicit string style selector (see <see cref="StringStyleSelector"/>)
+        /// that chooses the style of untagged string scalars. Pass null to restore the
+        /// default emitter heuristics.
+        /// </summary>
+        public EmitterSettings WithStringStyleSelector(Func<string, StringStyleDecision>? stringStyleSelector)
+        {
+            return new EmitterSettings(
+                BestIndent,
+                BestWidth,
+                IsCanonical,
+                MaxSimpleKeyLength,
+                SkipAnchorName,
+                IndentSequences,
+                NewLine,
+                UseUtf16SurrogatePairs,
+                stringStyleSelector
             );
         }
     }
