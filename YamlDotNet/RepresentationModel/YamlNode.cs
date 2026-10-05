@@ -42,6 +42,17 @@ namespace YamlDotNet.RepresentationModel
         public AnchorName Anchor { get; set; }
 
         /// <summary>
+        /// Gets the original node from which this node was copied, if this node was produced by a tree projection.
+        /// </summary>
+        /// <remarks>
+        /// When a <see cref="YamlNodeTreeProjection"/> copies a node into an independent node, the copy records
+        /// the source node it was created from. This allows the provenance of each copy to be traced back to the
+        /// original node in the source graph. Nodes that were not produced by a projection return <c>null</c>.
+        /// </remarks>
+        /// <value>The original node, or <c>null</c> if this node was not produced by a projection.</value>
+        public YamlNode? OriginalNode { get; internal set; }
+
+        /// <summary>
         /// Gets or sets the tag of the node.
         /// </summary>
         /// <value>The tag.</value>
